@@ -48,6 +48,7 @@ namespace rm_common
 class ControllerManager
 {
 public:
+  //创建一个服务客户端load_client_，用于调用/controller_manager/load_controller服务加载控制器。初始化一个控制器切换工具，用于在不同控制器之间切换。
   explicit ControllerManager(ros::NodeHandle& nh)
     : load_client_(nh.serviceClient<controller_manager_msgs::LoadController>("/controller_manager/load_controller"))
     , switch_caller_(nh)
@@ -58,6 +59,8 @@ public:
     load_client_.waitForExistence();
     ros::NodeHandle nh_list(nh, "controllers_list");
     XmlRpc::XmlRpcValue controllers;
+    // 我们把控制器分为三种类型：状态控制器、主控制器和校准控制器
+    //从参数服务器获取名为"state_controllers"的参数列表；遍历该列表，将每个控制器名称添加到 state_controllers_ 容器中；并为每个控制器名调用loadController()函数进行加载
     if (nh_list.getParam("state_controllers", controllers))
       for (int i = 0; i < controllers.size(); ++i)
       {
