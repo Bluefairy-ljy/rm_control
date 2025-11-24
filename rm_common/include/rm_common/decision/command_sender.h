@@ -61,6 +61,7 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
 #include <control_msgs/JointControllerState.h>
+#include <std_msgs/Float32.h>
 
 #include "rm_common/ros_utilities.h"
 #include "rm_common/decision/heat_limit.h"
@@ -269,10 +270,6 @@ public:
   {
     msg_.follow_vel_des = follow_vel_des;
   }
-  void setWirelessState(bool state)
-  {
-    msg_.wireless_state = state;
-  }
   void sendChassisCommand(const ros::Time& time, bool is_gyro)
   {
     power_limit_->setLimitPower(msg_, is_gyro);
@@ -385,8 +382,6 @@ public:
     nh.getParam("wheel_speed_16", wheel_speed_16_);
     nh.getParam("wheel_speed_18", wheel_speed_18_);
     nh.getParam("wheel_speed_30", wheel_speed_30_);
-    nh.param("wheel_speed_offset_front", wheel_speed_offset_front_, 0.0);
-    nh.param("wheel_speed_offset_back", wheel_speed_offset_back_, 0.0);
     nh.param("speed_oscillation", speed_oscillation_, 1.0);
     nh.param("extra_wheel_speed_once", extra_wheel_speed_once_, 0.);
     nh.param("deploy_wheel_speed", deploy_wheel_speed_, 410.0);
@@ -490,8 +485,6 @@ public:
   void sendCommand(const ros::Time& time) override
   {
     msg_.wheel_speed = getWheelSpeedDes();
-    msg_.wheels_speed_offset_front = getFrontWheelSpeedOffset();
-    msg_.wheels_speed_offset_back = getBackWheelSpeedOffset();
     msg_.hz = heat_limit_->getShootFrequency();
     TimeStampCommandSenderBase<rm_msgs::ShootCmd>::sendCommand(time);
   }
@@ -503,21 +496,15 @@ public:
   double getWheelSpeedDes()
   {
     setSpeedDesAndWheelSpeedDes();
-    if (hero_flag_)
+    if (deploy_flag_)
     {
-      if (deploy_flag_)
-        return deploy_wheel_speed_;
-      return wheel_speed_des_;
+      return deploy_wheel_speed_ + total_extra_wheel_speed_;
     }
     return wheel_speed_des_ + total_extra_wheel_speed_;
   }
   void setDeployState(bool flag)
   {
     deploy_flag_ = flag;
-  }
-  void setHeroState(bool flag)
-  {
-    hero_flag_ = flag;
   }
   bool getDeployState()
   {
@@ -564,29 +551,13 @@ public:
       }
     }
   }
-  double getFrontWheelSpeedOffset()
-  {
-    wheels_speed_offset_front_ = wheel_speed_offset_front_;
-    return wheels_speed_offset_front_;
-  }
-  double getBackWheelSpeedOffset()
-  {
-    wheels_speed_offset_back_ = wheel_speed_offset_back_;
-    return wheels_speed_offset_back_;
-  }
   void dropSpeed()
   {
-    if (hero_flag_)
-      wheel_speed_offset_front_ -= extra_wheel_speed_once_;
-    else
-      total_extra_wheel_speed_ -= extra_wheel_speed_once_;
+    total_extra_wheel_speed_ -= extra_wheel_speed_once_;
   }
   void raiseSpeed()
   {
-    if (hero_flag_)
-      wheel_speed_offset_front_ += extra_wheel_speed_once_;
-    else
-      total_extra_wheel_speed_ += extra_wheel_speed_once_;
+    total_extra_wheel_speed_ += extra_wheel_speed_once_;
   }
   void setArmorType(uint8_t armor_type)
   {
@@ -607,8 +578,6 @@ private:
   double speed_10_{}, speed_15_{}, speed_16_{}, speed_18_{}, speed_30_{}, speed_des_{}, speed_limit_{};
   double wheel_speed_10_{}, wheel_speed_15_{}, wheel_speed_16_{}, wheel_speed_18_{}, wheel_speed_30_{},
       wheel_speed_des_{}, last_bullet_speed_{}, speed_oscillation_{};
-  double wheel_speed_offset_front_{}, wheel_speed_offset_back_{};
-  double wheels_speed_offset_front_{}, wheels_speed_offset_back_{};
   double track_armor_error_tolerance_{};
   double track_buff_error_tolerance_{};
   double untrack_armor_error_tolerance_{};
@@ -618,7 +587,6 @@ private:
   double total_extra_wheel_speed_{};
   double deploy_wheel_speed_{};
   bool auto_wheel_speed_ = false;
-  bool hero_flag_{};
   bool deploy_flag_ = false;
   rm_msgs::TrackData track_data_;
   rm_msgs::GimbalDesError gimbal_des_error_;
@@ -626,6 +594,57 @@ private:
   rm_msgs::ShootData shoot_data_;
   std_msgs::Bool suggest_fire_;
   uint8_t armor_type_{};
+};
+class ExtraTargetXCommandSender : public CommandSenderBase<std_msgs::Float32>
+{
+public:
+  explicit ExtraTargetXCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Float32>(nh)
+  {
+    pub_ = nh.advertise<std_msgs::Float32>("total_target_x", 1);
+  }
+  void raiseTargetX()
+  {
+    total_extra_target_x ++;
+  }
+  void dropTargetX()
+  {
+    total_extra_target_x --;
+  }
+  void sendCommand(const ros::Time& time) override
+  {
+    msg_.data = total_extra_target_x;
+    pub_.publish(msg_);
+  }
+  void setZero() override{};
+
+private:
+  double total_extra_target_x = 0.;
+};
+
+class ExtraTargetYCommandSender : public CommandSenderBase<std_msgs::Float32>
+{
+public:
+  explicit ExtraTargetYCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Float32>(nh)
+  {
+    pub_ = nh.advertise<std_msgs::Float32>("total_target_y", 1);
+  }
+  void raiseTargetY()
+  {
+    total_extra_target_y ++;
+  }
+  void dropTargetY()
+  {
+    total_extra_target_y --;
+  }
+  void sendCommand(const ros::Time& time) override
+  {
+    msg_.data = total_extra_target_y;
+    pub_.publish(msg_);
+  }
+  void setZero() override{};
+
+private:
+  double total_extra_target_y = 0.;
 };
 
 class UseLioCommandSender : public CommandSenderBase<std_msgs::Bool>
