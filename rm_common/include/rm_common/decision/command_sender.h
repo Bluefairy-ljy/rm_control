@@ -595,57 +595,6 @@ private:
   std_msgs::Bool suggest_fire_;
   uint8_t armor_type_{};
 };
-class ExtraTargetXCommandSender : public CommandSenderBase<std_msgs::Float32>
-{
-public:
-  explicit ExtraTargetXCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Float32>(nh)
-  {
-    pub_ = nh.advertise<std_msgs::Float32>("total_target_x", 1);
-  }
-  void raiseTargetX()
-  {
-    total_extra_target_x ++;
-  }
-  void dropTargetX()
-  {
-    total_extra_target_x --;
-  }
-  void sendCommand(const ros::Time& time) override
-  {
-    msg_.data = total_extra_target_x;
-    pub_.publish(msg_);
-  }
-  void setZero() override{};
-
-private:
-  double total_extra_target_x = 0.;
-};
-
-class ExtraTargetYCommandSender : public CommandSenderBase<std_msgs::Float32>
-{
-public:
-  explicit ExtraTargetYCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Float32>(nh)
-  {
-    pub_ = nh.advertise<std_msgs::Float32>("total_target_y", 1);
-  }
-  void raiseTargetY()
-  {
-    total_extra_target_y ++;
-  }
-  void dropTargetY()
-  {
-    total_extra_target_y --;
-  }
-  void sendCommand(const ros::Time& time) override
-  {
-    msg_.data = total_extra_target_y;
-    pub_.publish(msg_);
-  }
-  void setZero() override{};
-
-private:
-  double total_extra_target_y = 0.;
-};
 
 class UseLioCommandSender : public CommandSenderBase<std_msgs::Bool>
 {
